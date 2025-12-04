@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Vista Mongo</title>
+</head>
+<body>
+  <h1>Datos de MongoDB</h1>
+  <pre id="data"></pre>
+
+  <script>
+    async function loadData() {
+      const res = await fetch("/data");
+      const json = await res.json();
+      document.getElementById("data").textContent = JSON.stringify(json, null, 2);
+    }
+
+    loadData();
+    setInterval(loadData, 2000); // refresca cada 2 segundos
+  </script>
+</body>
+</html>
