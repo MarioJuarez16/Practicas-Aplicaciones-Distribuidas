@@ -2,117 +2,114 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Sistema de Indicadores</title>
+    <title>Gestión de Indicadores Financieros</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        /* Estilo para resaltar las alertas en rojo */
-        .fila-alerta { background-color: #f8d7da !important; color: #842029; }
-        .contenedor-principal { max-width: 900px; margin: 40px auto; }
-        .seccion-card { border: none; box-shadow: 0 2px 10px rgba(0,0,0,0.1); border-radius: 10px; padding: 20px; }
+        .table-danger-custom { background-color: #f8d7da !important; color: #842029; font-weight: bold; }
+        .card { border-radius: 15px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
     </style>
 </head>
 <body class="bg-light">
+    <div class="container py-5">
+        <h2 class="text-center mb-4 fw-bold text-primary">📊 Módulo de Indicadores Económicos</h2>
 
-<div class="container contenedor-principal">
-    <h2 class="text-center mb-4">Panel de Indicadores</h2>
+        <div class="card p-4 mb-5">
+            <h5 class="card-title mb-3">Capturar Valor del Día</h5>
+            <form id="formIndicador" class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">Seleccionar Indicador</label>
+                    <select id="selIndicador" class="form-select" required>
+                        <option value="1">Dólar Fix (ID: 1)</option>
+                        <option value="2">UDIS (ID: 2)</option>
+                        <option value="3">TIIE (ID: 3)</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-bold">Valor</label>
+                    <input type="number" step="0.0001" id="valValor" class="form-control" placeholder="0.0000" required>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-bold">Fecha</label>
+                    <input type="date" id="valFecha" class="form-control" required>
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100 fw-bold">Registrar</button>
+                </div>
+            </form>
+        </div>
 
-    <div class="card seccion-card mb-4">
-        <h5 class="mb-3">Nuevo Registro</h5>
-        <form id="formRegistro" class="row g-3">
-            <div class="col-md-4">
-                <label class="form-label">Indicador</label>
-                <select id="inputIndicador" class="form-select" required>
-                    <option value="1">Dólar Fix</option>
-                    <option value="2">UDIS</option>
-                    <option value="3">TIIE</option>
-                </select>
+        <div class="card p-4">
+            <h5 class="card-title mb-3">Historial de los últimos 30 días</h5>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Indicador</th>
+                            <th>Fecha</th>
+                            <th>Valor</th>
+                            <th>Unidad</th>
+                            <th>Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaHistorial">
+                        </tbody>
+                </table>
             </div>
-            <div class="col-md-3">
-                <label class="form-label">Valor</label>
-                <input type="number" step="0.0001" id="inputValor" class="form-control" required>
-            </div>
-            <div class="col-md-3">
-                <label class="form-label">Fecha</label>
-                <input type="date" id="inputFecha" class="form-control" required>
-            </div>
-            <div class="col-md-2 d-flex align-items-end">
-                <button type="submit" class="btn btn-primary w-100">Guardar</button>
-            </div>
-        </form>
+        </div>
     </div>
 
-    <div class="card seccion-card">
-        <h5 class="mb-3">Historial Reciente</h5>
-        <table class="table table-striped align-middle">
-            <thead>
-                <tr>
-                    <th>Nombre</th>
-                    <th>Fecha</th>
-                    <th>Valor</th>
-                    <th>Estado</th>
-                </tr>
-            </thead>
-            <tbody id="cuerpoTabla">
-                </tbody>
-        </table>
-    </div>
-</div>
+    <script>
+        const API = "http://localhost:8080/NombreDeTuProyecto/api/indicadores";
 
-<script>
-    // Ajusta esta URL al nombre de tu proyecto en NetBeans
-    const URL_BASE = "http://localhost:8080/NombreDeTuProyecto/api/indicadores";
+        // Cargar historial al abrir la página
+        window.onload = loadHistorial;
 
-    // Cargar datos al inicio
-    document.addEventListener("DOMContentLoaded", cargarDatos);
+        async function loadHistorial() {
+            try {
+                const res = await fetch(`${API}/historial`);
+                const data = await res.json();
+                const tbody = document.getElementById('tablaHistorial');
+                
+                tbody.innerHTML = data.map(v => `
+                    <tr class="${v.estado === 'ALERTA' ? 'table-danger-custom' : ''}">
+                        <td>${v.indicador.nombre}</td>
+                        <td>${v.fecha}</td>
+                        <td>${v.valor.toFixed(4)}</td>
+                        <td>${v.indicador.unidad}</td>
+                        <td>
+                            <span class="badge ${v.estado === 'ALERTA' ? 'bg-danger' : 'bg-success'}">
+                                ${v.estado}
+                            </span>
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (e) { console.error("Error cargando historial", e); }
+        }
 
-    async function cargarDatos() {
-        try {
-            const respuesta = await fetch(`${URL_BASE}/historial`);
-            const lista = await respuesta.json();
-            const tabla = document.getElementById('cuerpoTabla');
+        document.getElementById('formIndicador').addEventListener('submit', async (e) => {
+            e.preventDefault();
             
-            tabla.innerHTML = lista.map(item => `
-                <tr class="${item.estado === 'ALERTA' ? 'fila-alerta' : ''}">
-                    <td>${item.indicador.nombre}</td>
-                    <td>${item.fecha}</td>
-                    <td>${item.valor.toFixed(4)}</td>
-                    <td>
-                        <span class="badge ${item.estado === 'ALERTA' ? 'bg-danger' : 'bg-success'}">
-                            ${item.estado}
-                        </span>
-                    </td>
-                </tr>
-            `).join('');
-        } catch (error) {
-            console.error("Error al cargar:", error);
-        }
-    }
+            const payload = {
+                indicador: { id: document.getElementById('selIndicador').value },
+                valor: parseFloat(document.getElementById('valValor').value),
+                fecha: document.getElementById('valFecha').value
+            };
 
-    document.getElementById('formRegistro').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        
-        const datos = {
-            indicador: { id: document.getElementById('inputIndicador').value },
-            valor: parseFloat(document.getElementById('inputValor').value),
-            fecha: document.getElementById('inputFecha').value
-        };
+            const res = await fetch(`${API}/registrar`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
 
-        const respuesta = await fetch(`${URL_BASE}/registrar`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(datos)
+            if (res.ok) {
+                alert("¡Valor registrado con éxito!");
+                loadHistorial();
+                document.getElementById('formIndicador').reset();
+            } else {
+                const err = await res.json();
+                alert("Error: " + err.error);
+            }
         });
-
-        if (respuesta.ok) {
-            alert("Registrado correctamente");
-            cargarDatos(); // Recargar tabla
-            e.target.reset();
-        } else {
-            const errorData = await respuesta.json();
-            alert("Error: " + (errorData.error || "No se pudo guardar"));
-        }
-    });
-</script>
-
+    </script>
 </body>
 </html>
