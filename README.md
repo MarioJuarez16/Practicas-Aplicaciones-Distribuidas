@@ -1,55 +1,53 @@
-package com.indicadores.resource;
+package com.indicadores.service;
 
+import com.indicadores.entity.Indicador;
 import com.indicadores.entity.ValorDiario;
-import com.indicadores.service.IndicadorService;
-import jakarta.inject.Inject;
-import jakarta.ws.rs.*;
-import jakarta.ws.rs.core.MediaType;
-import jakarta.ws.rs.core.Response;
+import jakarta.ejb.Stateless;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import jakarta.persistence.TypedQuery;
+import java.time.LocalDate;
 import java.util.List;
 
-@Path("/indicadores")
-@Produces(MediaType.APPLICATION_JSON)
-@Consumes(MediaType.APPLICATION_JSON)
-public class IndicadorResource {
+@Stateless
+public class IndicadorService {
 
-    @Inject
-    private IndicadorService service;
+    @PersistenceContext(unitName = "IndicadoresPU")
+    private EntityManager em;
 
-    @POST
-    @Path("/registrar")
-    public Response registrar(ValorDiario valor) {
-        try {
-            ValorDiario guardado = service.guardarValor(valor);
-            return Response.status(Response.Status.CREATED)
-                    .entity(guardado)
-                    .header("Access-Control-Allow-Origin", "*") // Permite la conexión
-                    .build();
-        } catch (Exception e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("{\"error\":\"" + e.getMessage() + "\"}")
-                    .header("Access-Control-Allow-Origin", "*")
-                    .build();
+    public ValorDiario guardarValor(ValorDiario nuevo) throws Exception {
+        // 1. Validaciones de negocio
+        if (nuevo.getFecha().isAfter(LocalDate.now())) throw new Exception("No se permiten fechas futuras");
+        if (nuevo.getValor() < 0) throw new Exception("El valor no puede ser negativo");
+
+        // 2. Corregir error null: Buscar el indicador real en la DB
+        Indicador indDB = em.find(Indicador.class, nuevo.getIndicador().getId());
+        if (indDB == null) throw new Exception("ID de Indicador no válido");
+        nuevo.setIndicador(indDB);
+
+        // 3. Algoritmo de Variación Brusca (5%)
+        TypedQuery<ValorDiario> query = em.createQuery(
+            "SELECT v FROM ValorDiario v WHERE v.indicador.id = :id ORDER BY v.fecha DESC", ValorDiario.class);
+        query.setParameter("id", indDB.getId());
+        query.setMaxResults(1);
+        List<ValorDiario> historial = query.getResultList();
+
+        nuevo.setEstado("OK");
+        if (!historial.isEmpty()) {
+            double vAnterior = historial.get(0).getValor();
+            double variacion = Math.abs((nuevo.getValor() - vAnterior) / vAnterior);
+            if (variacion > 0.05) {
+                nuevo.setEstado("ALERTA");
+            }
         }
+
+        em.persist(nuevo);
+        return nuevo;
     }
 
-    @GET
-    @Path("/historial")
-    public Response historial() {
-        List<ValorDiario> lista = service.obtenerHistorial30Dias();
-        return Response.ok(lista)
-                .header("Access-Control-Allow-Origin", "*") // Permite la conexión
-                .build();
-    }
-
-    // Método necesario para que el navegador no bloquee la petición antes de enviarla
-    @OPTIONS
-    @Path("{path : .*}")
-    public Response options() {
-        return Response.ok("")
-                .header("Access-Control-Allow-Origin", "*")
-                .header("Access-Control-Allow-Headers", "origin, content-type, accept, authorization")
-                .header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, HEAD")
-                .build();
+    public List<ValorDiario> obtenerHistorial30Dias() {
+        return em.createQuery("SELECT v FROM ValorDiario v ORDER BY v.fecha DESC", ValorDiario.class)
+                 .setMaxResults(30)
+                 .getResultList();
     }
 }
