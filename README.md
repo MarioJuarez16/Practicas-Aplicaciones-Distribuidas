@@ -1,98 +1,37 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <title>Indicadores Económicos</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-        .alerta-roja { background-color: #f8d7da !important; color: #842029; font-weight: bold; }
-        .contenedor { max-width: 800px; margin: 40px auto; }
-    </style>
-</head>
-<body class="bg-light">
-<div class="container contenedor">
-    <div class="card shadow-sm p-4 mb-4">
-        <h4 class="mb-3">Registrar Valor Diario</h4>
-        <form id="formRegistro" class="row g-3">
-            <div class="col-md-4">
-                <label class="form-label">Indicador</label>
-                <select id="selInd" class="form-select" required>
-                    <option value="1">Dólar Fix</option>
-                    <option value="2">UDIS</option>
-                    <option value="3">TIIE</option>
-                </select>
-            </div>
-            <div class="col-md-4">
-                <label class="form-label">Valor</label>
-                <input type="number" step="0.0001" id="txtVal" class="form-control" required>
-            </div>
-            <div class="col-md-4">
-                <label class="form-label">Fecha</label>
-                <input type="date" id="txtFec" class="form-control" required>
-            </div>
-            <div class="col-12 text-end">
-                <button type="submit" class="btn btn-primary">Registrar Valor</button>
-            </div>
-        </form>
-    </div>
+# 📊 Sistema de Gestión de Indicadores Financieros
 
-    <div class="card shadow-sm p-4">
-        <h5>Historial (Últimos 30 días)</h5>
-        <table class="table mt-3">
-            <thead class="table-dark">
-                <tr>
-                    <th>Indicador</th>
-                    <th>Fecha</th>
-                    <th>Valor</th>
-                    <th>Estado</th>
-                </tr>
-            </thead>
-            <tbody id="tablaBody"></tbody>
-        </table>
-    </div>
-</div>
+Este proyecto es una aplicación web diseñada para el registro y monitoreo de variaciones diarias en indicadores económicos (Dólar, UDIS, TIIE), desarrollada bajo estándares de **Jakarta EE 10**.
 
-<script>
-    // CAMBIA 'ModuloGestion' por el nombre de tu proyecto en NetBeans
-    const URL_API = "http://localhost:8080/ModuloGestion/api/indicadores";
+## 🚀 Arquitectura Implementada
 
-    async function cargarTabla() {
-        const res = await fetch(`${URL_API}/historial`);
-        const lista = await res.json();
-        document.getElementById('tablaBody').innerHTML = lista.map(v => `
-            <tr class="${v.estado === 'ALERTA' ? 'alerta-roja' : ''}">
-                <td>${v.indicador.nombre}</td>
-                <td>${v.fecha}</td>
-                <td>${v.valor.toFixed(4)}</td>
-                <td><span class="badge ${v.estado === 'ALERTA' ? 'bg-danger' : 'bg-success'}">${v.estado}</span></td>
-            </tr>
-        `).join('');
-    }
+Se utilizó una **Arquitectura en Capas** para garantizar el orden y la escalabilidad del sistema:
 
-    document.getElementById('formRegistro').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const payload = {
-            indicador: { id: parseInt(document.getElementById('selInd').value) },
-            valor: parseFloat(document.getElementById('txtVal').value),
-            fecha: document.getElementById('txtFec').value
-        };
+* **Presentación:** Interfaz construida con HTML5 y JavaScript (Fetch API) para una experiencia de usuario rápida y dinámica.
+* **Negocio (EJB):** Lógica centralizada en componentes EJB que validan los datos y ejecutan el algoritmo de alertas.
+* **Persistencia (JPA):** Gestión de base de datos mediante Java Persistence API, facilitando el manejo de la información sin depender de SQL nativo.
 
-        const res = await fetch(`${URL_API}/registrar`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
+**Justificación:** Esta arquitectura permite separar la vista de la lógica, lo que facilita el mantenimiento y permite que el sistema crezca de forma organizada.
 
-        if (res.ok) {
-            cargarTabla();
-            e.target.reset();
-        } else {
-            const err = await res.json();
-            alert("Error: " + err.error);
-        }
-    });
 
-    document.addEventListener("DOMContentLoaded", cargarTabla);
-</script>
-</body>
-</html>
+
+## 🛠️ Patrones de Diseño
+
+* **Repository / DAO:** Implementado a través de JPA para abstraer el acceso a los datos. El código no "habla" directamente con la base de datos, sino a través de un gestor de objetos.
+* **Inyección de Dependencias (CDI):** Utilizado para conectar los servicios con la API de forma limpia y desacoplada.
+
+## 📈 Algoritmo de Variaciones Bruscas
+
+El sistema protege la integridad de los datos mediante las siguientes reglas:
+1.  **Validación:** Bloqueo automático de valores negativos y fechas futuras.
+2.  **Detección:** Al ingresar un valor, el sistema lo compara con el último registro del mismo indicador.
+3.  **Alerta:** Si la variación es mayor al **5%**, el registro se marca como **"ALERTA"** y se resalta en **color rojo** en la tabla de resultados.
+
+## 🔄 Guía de Migración (Oracle a SQL Server)
+
+Gracias al uso de **JPA**, migrar este sistema de Oracle a SQL Server es sumamente sencillo:
+1.  **Driver:** Se cambia el controlador JDBC en el servidor GlassFish.
+2.  **Dialecto:** Se actualiza la propiedad del dialecto en el archivo `persistence.xml`.
+3.  **Código:** No es necesario modificar el código Java, ya que JPA se encarga de traducir las operaciones al lenguaje específico de SQL Server automáticamente.
+
+---
+*Evaluación Técnica - Analista de Sistemas*
